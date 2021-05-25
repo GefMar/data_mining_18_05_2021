@@ -51,7 +51,30 @@ class Parse5ka:
                 yield product
 
     def _save(self, data: dict, file_path: Path):
-        file_path.write_text(json.dumps(data, ensure_ascii=False))
+        file_path.write_text(json.dumps(data, ensure_ascii=False), encoding="UTF-8")
+
+
+class CategoriesParser(Parse5ka):
+
+    def __init__(self, categories_url, *args, **kwargs):
+        self.categories_url = categories_url
+        super().__init__(*args, **kwargs)
+
+    def _get_categories(self):
+        response = self._get_response(self.categories_url)
+        data = response.json()
+        return data
+
+    def run(self):
+        for category in self._get_categories():
+            category["products"] = []
+            params = f"?categories={category['parent_group_code']}"
+            url = f"{self.start_url}{params}"
+
+            category["products"].extend(list(self._parse(url)))
+            file_name = f"{category['parent_group_code']}.json"
+            cat_path = self.save_path.joinpath(file_name)
+            self._save(category, cat_path)
 
 
 def get_save_path(dir_name: str) -> Path:
@@ -63,6 +86,8 @@ def get_save_path(dir_name: str) -> Path:
 
 if __name__ == '__main__':
     url = "https://5ka.ru/api/v2/special_offers/"
+    category_url = "https://5ka.ru/api/v2/categories/"
     product_path = get_save_path('products')
     parser = Parse5ka(url, product_path)
-    parser.run()
+    category_parser = CategoriesParser(category_url, url, get_save_path("category_products"))
+    category_parser.run()

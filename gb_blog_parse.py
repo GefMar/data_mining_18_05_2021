@@ -4,6 +4,7 @@ import requests
 from urllib.parse import urljoin
 import bs4
 import pymongo
+from database.database import Database
 
 
 class GbBlogParse:
@@ -13,7 +14,7 @@ class GbBlogParse:
     }
     __parse_time = 0
 
-    def __init__(self, start_url, db, delay=1.0):
+    def __init__(self, start_url, db: Database, delay=1.0):
         self.start_url = start_url
         self.db = db
         self.delay = delay
@@ -81,7 +82,7 @@ class GbBlogParse:
             "post_data": {
                 "title": soup.find("h1", attrs={"class": "blogpost-title"}).text,
                 "url": response.url,
-                "id": soup.find("comments").attrs.get("commentable-id"),
+                "id": int(soup.find("comments").attrs.get("commentable-id")),
             },
             "author_data": {
                 "url": urljoin(response.url, author_name_tag.parent.attrs.get("href")),
@@ -96,8 +97,7 @@ class GbBlogParse:
         self._save(data)
 
     def _save(self, data: dict):
-        collection = self.db["gb_blog_parse"]
-        collection.insert_one(data)
+        self.db.add_post(data)
 
     def _get_comments(self, post_id):
         api_path = f"/api/v2/comments?commentable_type=Post&commentable_id={post_id}&order=desc"
@@ -108,6 +108,7 @@ class GbBlogParse:
 
 if __name__ == '__main__':
     client_db = pymongo.MongoClient("mongodb://localhost:27017")
-    db = client_db["gb_parse_18_05"]
-    parser = GbBlogParse("https://gb.ru/posts", db)
+    orm_database = Database("sqlite:///gb_blog_parse.db")
+    # db = client_db["gb_parse_18_05"]
+    parser = GbBlogParse("https://gb.ru/posts", orm_database)
     parser.run()

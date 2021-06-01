@@ -30,7 +30,9 @@ class GbBlogParse:
             response = requests.get(url, headers=self.headers)
             print(f"RESPONSE: {response.url}")
             self.__parse_time = time.time()
-            if response.status_code == 200:
+            if response.status_code in (206, 200):
+                # TODO: 206 код означает что одали нам часть контента, и необходимо забрать 
+                #  оставшуююся часть.
                 return response
 
     def get_task(self, url: str, callback: typing.Callable) -> typing.Callable:

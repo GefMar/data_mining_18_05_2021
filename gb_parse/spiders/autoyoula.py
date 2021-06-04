@@ -19,16 +19,13 @@ class AutoyoulaSpider(scrapy.Spider):
         )
 
     def brand_parse(self, response):
-        yield from self._get_follow(
-            response,
-            ".Paginator_block__2XAPy a.Paginator_button__u1e7D",
-            self.brand_parse
+
+        selectors = (
+            ("div.Paginator_block__2XAPy a.Paginator_button__u1e7D", self.brand_parse),
+            ("article.SerpSnippet_snippet__3O1t2 a.SerpSnippet_name__3F7Yu", self.car_parse),
         )
-        yield from self._get_follow(
-            response,
-            "a.SerpSnippet_name__3F7Yu.blackLink",
-            self.car_parse
-        )
+        for selector, callback in selectors:
+            yield from self._get_follow(response, selector, callback)
 
     def car_parse(self, response):
         print(1)

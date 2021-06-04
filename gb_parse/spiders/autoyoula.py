@@ -1,6 +1,7 @@
 import pymongo
 import scrapy
-from .css_selectors import BRANDS, CARS, PAGINATION, CAR_DATA
+from .xpath_selectors import BRANDS, PAGINATION, CARS, CAR_DATA
+from ..loaders import AutoyoulaLoader
 
 
 class AutoyoulaSpider(scrapy.Spider):
@@ -13,9 +14,8 @@ class AutoyoulaSpider(scrapy.Spider):
         self.db_client = pymongo.MongoClient()
 
     def _get_follow(self, response, selector_str, callback):
-        for a_link in response.css(selector_str):
-            url = a_link.attrib.get("href")
-            yield response.follow(url, callback=callback)
+        for a_link in response.xpath(selector_str):
+            yield response.follow(a_link, callback=callback)
 
     def parse(self, response):
         yield from self._get_follow(
@@ -29,10 +29,8 @@ class AutoyoulaSpider(scrapy.Spider):
             yield from self._get_follow(response, item["selector"], getattr(self, item["callback"]))
 
     def car_parse(self, response):
-        data = {}
-        for key, selector in CAR_DATA.items():
-            try:
-                data[key] = selector(response)
-            except (ValueError, AttributeError):
-                continue
-        self.db_client[self.crawler.settings.get("BOT_NAME", "parser")][self.name].insert_one(data)
+        loader = AutoyoulaLoader(response=response)
+        loader.add_value("url", response.url)
+        for key, value in CAR_DATA.items():
+            loader.add_xpath(field_name=key, **value)
+        yield loader.load_item()
